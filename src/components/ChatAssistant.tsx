@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MessageCircle, Send, BookOpen, GraduationCap } from "lucide-react";
 import { toast } from "sonner";
+import { Textarea } from "@/components/ui/textarea";
+import { createClient } from "@/integrations/supabase/client";
 
 type Message = {
   id: string;
@@ -14,15 +16,7 @@ type Message = {
   timestamp: Date;
 };
 
-// Sample predefined responses for demo purposes
-const aiResponses = {
-  "help": "I'm your Future Found AI Assistant. I can help with career guidance, academic advice, mental health resources, and more. How can I assist you today?",
-  "career": "Based on your assessment results, you might explore careers in technology, healthcare, or creative fields. Would you like me to provide more specific recommendations based on your interests in programming and design?",
-  "stress": "I'm sorry to hear you're feeling stressed. Remember to take breaks, practice deep breathing, and break large tasks into smaller ones. Would you like me to suggest some specific stress management techniques?",
-  "fail": "Failing an exam doesn't define your potential or future. Many successful people faced academic setbacks. Let's explore what went wrong and create a plan to improve. Would you like help creating a study plan?",
-  "parents": "Having difficult conversations with parents about career choices can be challenging. I suggest starting by understanding their concerns, sharing your research, and finding compromise. Would you like some specific talking points?",
-  "default": "Thank you for your message. I'm here to help with any career or academic questions. Could you provide more details so I can give you the best guidance?"
-};
+const supabase = createClient();
 
 const ChatAssistant = () => {
   const [messages, setMessages] = useState<Message[]>([
@@ -42,7 +36,7 @@ const ChatAssistant = () => {
     messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
     
     // Add user message
@@ -57,34 +51,44 @@ const ChatAssistant = () => {
     setInputMessage("");
     setIsTyping(true);
     
-    // Simulate AI response after a delay
-    setTimeout(() => {
-      let responseContent = aiResponses.default;
-      
-      // Simple matching for demo
-      const lowerCaseInput = inputMessage.toLowerCase();
-      if (lowerCaseInput.includes("help") || lowerCaseInput.includes("what can you do")) {
-        responseContent = aiResponses.help;
-      } else if (lowerCaseInput.includes("career") || lowerCaseInput.includes("job") || lowerCaseInput.includes("profession")) {
-        responseContent = aiResponses.career;
-      } else if (lowerCaseInput.includes("stress") || lowerCaseInput.includes("anxious") || lowerCaseInput.includes("overwhelm")) {
-        responseContent = aiResponses.stress;
-      } else if (lowerCaseInput.includes("fail") || lowerCaseInput.includes("exam") || lowerCaseInput.includes("test")) {
-        responseContent = aiResponses.fail;
-      } else if (lowerCaseInput.includes("parent") || lowerCaseInput.includes("mom") || lowerCaseInput.includes("dad")) {
-        responseContent = aiResponses.parents;
+    try {
+      // Call the Supabase Edge Function
+      const { data, error } = await supabase.functions.invoke('chat-completion', {
+        body: { 
+          message: inputMessage,
+          chatHistory: messages
+        },
+      });
+
+      if (error) {
+        throw new Error(error.message);
       }
-      
+
+      // Add AI response
       const aiMessage = {
         id: Date.now().toString(),
-        content: responseContent,
+        content: data.response,
         sender: 'assistant' as const,
         timestamp: new Date()
       };
       
       setMessages(prev => [...prev, aiMessage]);
+    } catch (error) {
+      console.error('Error getting response:', error);
+      toast.error('Failed to get a response. Please try again.');
+      
+      // Fallback response in case of error
+      const errorMessage = {
+        id: Date.now().toString(),
+        content: "I'm having trouble connecting right now. Please try again in a moment.",
+        sender: 'assistant' as const,
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -145,7 +149,7 @@ const ChatAssistant = () => {
                       <span className="text-sm font-medium">Future Found Assistant</span>
                     </div>
                   )}
-                  <p className="text-sm">{message.content}</p>
+                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                   <div className="mt-1 text-xs text-right opacity-70">
                     {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </div>
@@ -203,18 +207,20 @@ const ChatAssistant = () => {
             }}
             className="flex w-full items-center space-x-2"
           >
-            <Input
+            <Textarea
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Type your message..."
-              className="flex-1"
+              className="flex-1 min-h-[40px] max-h-[120px]"
+              rows={1}
+              style={{ resize: "none" }}
             />
             <Button 
               type="submit" 
               size="icon"
               disabled={!inputMessage.trim() || isTyping}
-              className="bg-future-purple hover:bg-future-purple/90"
+              className="bg-future-purple hover:bg-future-purple/90 h-10"
             >
               <Send className="h-4 w-4" />
             </Button>
