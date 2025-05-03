@@ -1,13 +1,14 @@
 
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { MessageCircle, BookmarkCheck } from "lucide-react";
+import { MessageCircle, BookmarkCheck, Search, X } from "lucide-react";
 import { MessageType } from "./chat/ChatMessage";
 import ChatMessageList from "./chat/ChatMessageList";
 import SuggestionChips from "./chat/SuggestionChips";
 import ChatInput from "./chat/ChatInput";
 import { sendMessageToAssistant } from "./chat/ChatAssistantService";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
 const ChatAssistant = () => {
@@ -24,7 +25,9 @@ const ChatAssistant = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [showBookmarks, setShowBookmarks] = useState(false);
   const [savedMessages, setSavedMessages] = useState<MessageType[]>([]);
-
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+  
   useEffect(() => {
     // Load saved messages from localStorage on component mount
     const saved = localStorage.getItem('savedMessages');
@@ -106,7 +109,18 @@ const ChatAssistant = () => {
     handleSendMessage(suggestion);
   };
 
+  const toggleSearch = () => {
+    setIsSearching(prev => !prev);
+    setSearchTerm("");
+  };
+
   const bookmarkedCount = savedMessages.length;
+
+  // Filter messages based on search term
+  const filteredMessages = searchTerm 
+    ? messages.filter(message => 
+        message.content.toLowerCase().includes(searchTerm.toLowerCase()))
+    : messages;
 
   return (
     <div className="h-[calc(100vh-10rem)] flex flex-col">
@@ -122,23 +136,55 @@ const ChatAssistant = () => {
                 <CardDescription>Ask any questions about careers, education, or wellbeing</CardDescription>
               </div>
             </div>
-            {bookmarkedCount > 0 && (
-              <button 
-                onClick={() => setShowBookmarks(true)}
-                className="flex items-center gap-1 text-sm font-medium text-future-purple hover:text-future-purple/80 transition-colors"
-              >
-                <BookmarkCheck className="h-4 w-4" />
-                <span>{bookmarkedCount} Saved</span>
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {isSearching ? (
+                <div className="flex items-center gap-1">
+                  <Input
+                    type="text"
+                    placeholder="Search messages..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-52 h-8"
+                    autoFocus
+                  />
+                  <button 
+                    onClick={toggleSearch}
+                    className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <button 
+                  onClick={toggleSearch}
+                  className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
+                >
+                  <Search className="h-4 w-4" />
+                </button>
+              )}
+              
+              {bookmarkedCount > 0 && (
+                <button 
+                  onClick={() => setShowBookmarks(true)}
+                  className="flex items-center gap-1 text-sm font-medium text-future-purple hover:text-future-purple/80 transition-colors"
+                >
+                  <BookmarkCheck className="h-4 w-4" />
+                  <span>{bookmarkedCount} Saved</span>
+                </button>
+              )}
+            </div>
           </div>
+          {searchTerm && filteredMessages.length === 0 && (
+            <p className="text-sm text-muted-foreground mt-2">No messages found for "{searchTerm}"</p>
+          )}
         </CardHeader>
         
         <CardContent className="flex-1 overflow-y-auto p-4">
           <ChatMessageList 
-            messages={messages} 
+            messages={filteredMessages} 
             isTyping={isTyping}
             onBookmarkToggle={handleBookmarkToggle}
+            searchTerm={searchTerm}
           />
         </CardContent>
         
@@ -171,10 +217,12 @@ const ChatAssistant = () => {
           {savedMessages.length > 0 ? (
             <div className="space-y-4 mt-4">
               {savedMessages.map(message => (
-                <ChatMessage 
-                  key={message.id} 
-                  message={message} 
+                <ChatMessageList
+                  key={`bookmark-${message.id}`} 
+                  messages={[message]} 
+                  isTyping={false}
                   onBookmarkToggle={handleBookmarkToggle}
+                  searchTerm=""
                 />
               ))}
             </div>

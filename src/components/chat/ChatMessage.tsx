@@ -16,9 +16,10 @@ export type MessageType = {
 interface ChatMessageProps {
   message: MessageType;
   onBookmarkToggle: (messageId: string, bookmarked: boolean) => void;
+  searchTerm?: string;
 }
 
-const ChatMessage: React.FC<ChatMessageProps> = ({ message, onBookmarkToggle }) => {
+const ChatMessage: React.FC<ChatMessageProps> = ({ message, onBookmarkToggle, searchTerm = "" }) => {
   const [isBookmarked, setIsBookmarked] = useState(message.bookmarked || false);
 
   const handleBookmark = (e: React.MouseEvent) => {
@@ -33,6 +34,26 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onBookmarkToggle }) 
     );
   };
 
+  // Highlight search matches in message content
+  const highlightContent = () => {
+    if (!searchTerm) return message.content;
+
+    const parts = message.content.split(new RegExp(`(${searchTerm})`, 'gi'));
+
+    return (
+      <React.Fragment>
+        {parts.map((part, i) => {
+          const isMatch = part.toLowerCase() === searchTerm.toLowerCase();
+          return isMatch ? (
+            <span key={i} className="bg-yellow-200 dark:bg-yellow-800 rounded px-1">{part}</span>
+          ) : (
+            <React.Fragment key={i}>{part}</React.Fragment>
+          );
+        })}
+      </React.Fragment>
+    );
+  };
+
   return (
     <div 
       className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
@@ -43,6 +64,10 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onBookmarkToggle }) 
           ${message.sender === 'user' 
             ? 'bg-primary text-primary-foreground' 
             : 'bg-muted'
+          }
+          ${searchTerm && message.content.toLowerCase().includes(searchTerm.toLowerCase())
+            ? 'ring-2 ring-yellow-500' 
+            : ''
           }
         `}
       >
@@ -56,7 +81,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onBookmarkToggle }) 
             <span className="text-sm font-medium">Future Found Assistant</span>
           </div>
         )}
-        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+        <p className="text-sm whitespace-pre-wrap">{searchTerm ? highlightContent() : message.content}</p>
         <div className="mt-1 text-xs flex justify-between items-center">
           <span className="opacity-70">
             {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

@@ -7,9 +7,15 @@ interface ChatMessageListProps {
   messages: MessageType[];
   isTyping: boolean;
   onBookmarkToggle: (messageId: string, bookmarked: boolean) => void;
+  searchTerm?: string;
 }
 
-const ChatMessageList: React.FC<ChatMessageListProps> = ({ messages, isTyping, onBookmarkToggle }) => {
+const ChatMessageList: React.FC<ChatMessageListProps> = ({ 
+  messages, 
+  isTyping, 
+  onBookmarkToggle,
+  searchTerm = "" 
+}) => {
   const messageEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when messages update
@@ -24,6 +30,7 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({ messages, isTyping, o
           key={message.id} 
           message={message} 
           onBookmarkToggle={onBookmarkToggle}
+          searchTerm={searchTerm}
         />
       ))}
       
