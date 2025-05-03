@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { MessageCircle, Send, BookOpen, GraduationCap } from "lucide-react";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
-import { createClient } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 
 type Message = {
   id: string;
@@ -15,8 +15,6 @@ type Message = {
   sender: 'user' | 'assistant';
   timestamp: Date;
 };
-
-const supabase = createClient();
 
 const ChatAssistant = () => {
   const [messages, setMessages] = useState<Message[]>([
